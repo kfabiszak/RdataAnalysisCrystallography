@@ -1,0 +1,289 @@
+---
+title: "Projekt z analizy danych"
+author: "Krzysztof Fabiszak"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_float: 
+      collapsed: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Biblioteki 
+Kod wyliczaj¹cy wykorzystane biblioteki.
+
+```{r libraries, message=FALSE}
+#devtools::install_github("tidyverse/readr")
+library(readr)
+#devtools::install_github("hadley/dplyr")
+library(dplyr)
+#devtools::install_github("ropensci/plotly")
+library(plotly)
+#devtools::install_github("tidyverse/ggplot2")
+library(ggplot2)
+#devtools::install_github("topepo/caret/pkg/caret")
+library(caret)
+#devtools::install_github("haozhu233/kableExtra")
+library(kableExtra)
+#devtools::install_github("tidyverse/magrittr")
+library(magrittr)
+
+#Paczki do caret :
+#install.packages("randomForest")
+#library(randomForest)
+#install.packages("e1071")
+#library(e1071)
+```
+
+## Powtarzalnoœæ eksperymentu
+Kod zapewniaj¹cy powtarzalnoœæ wyników przy ka¿dym uruchomieniu raportu na tych samych danych.
+
+```{r repeating, message=FALSE}
+set.seed(2157)
+```
+
+## Wczytywanie danych
+Kod pozwalaj¹cy wczytaæ dane z pliku.
+
+```{r reading, cache.lazy=FALSE, cache=TRUE, warning = FALSE, message=FALSE}
+all_summary <- read_delim("all_summary.csv", delim = ";", trim_ws = TRUE, comment = "")
+```
+
+## Czyszczenie danych
+Kod usuwaj¹cy z danych wiersze posiadaj¹ce dane wartoœæ zmiennej res_name.
+
+```{r removing, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+to_remove = c('UNK', 'UNX', 'UNL', 'DUM', 'N', 'BLOB', 'ALA', 'ARG', 'ASN', 'ASP', 'CYS', 'GLN', 'GLU', 'GLY', 'HIS', 'ILE', 'LEU', 'LYS', 'MET', 'MSE', 'PHE', 'PRO', 'SEC', 'SER', 'THR', 'TRP', 'TYR', 'VAL', 'DA', 'DG', 'DT', 'DC', 'DU', 'A', 'G', 'T', 'C', 'U', 'HOH', 'H20', 'WAT')
+all_summary %<>% filter(!(res_name %in% to_remove))
+```
+
+## Przetwarzanie wartoœci pustych
+Kod przetwarzaj¹cy brakuj¹ce dane.
+
+```{r missing, cache.lazy=FALSE, cache=TRUE}
+all_summary %<>% filter(!is.na(res_name))
+```
+
+## Statystyki
+Sekcja podsumowuj¹ca rozmiar zbioru i podstawowe statystyki
+
+### Rozmiar zbioru
+
+Liczba kolumn
+
+```{r size_col, message=FALSE}
+ncol(all_summary)
+```
+
+Liczba wierszy
+
+```{r size_row, message=FALSE}
+nrow(all_summary)
+```
+
+### Statystyki
+
+```{r summarizing, message=FALSE, warning=FALSE, cache.lazy=FALSE, cache=TRUE}
+kable(t(do.call(cbind,lapply(all_summary, summary)))) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  scroll_box(width = "100%", height = "600px")
+```
+
+## Ograniczanie zbioru
+Kod ograniczaj¹cy liczbê klas (res_name) do 50 najpopularniejszych wartoœci.
+
+```{r popular, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+most_popular <- all_summary %>% group_by(res_name) %>% summarise(count=n()) %>% arrange(desc(count)) %>% head(50)
+all_summary %<>% filter(res_name %in% most_popular$res_name)
+```
+
+## Korelacja zmiennych {.tabset}
+Sekcja sprawdzaj¹ca korelacje miêdzy zmiennymi; sekcja ta powinna zawieraæ jak¹œ formê graficznej prezentacji korelacji.
+
+### atom_non_h_count
+
+```{r correlation1, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+ggplot(all_summary, aes(x=local_res_atom_non_h_count, y=dict_atom_non_h_count)) + geom_point() + ggtitle("local_res_atom_non_h_count vs dict_atom_non_h_count") + geom_smooth(method=lm, se=FALSE) + scale_x_continuous(name = "local_res_atom_non_h_count") + scale_y_continuous(name = "dict_atom_non_h_count") + theme(plot.title = element_text(hjust = 0.5), panel.background = element_blank(), axis.line = element_line(color="black"), axis.line.x = element_line(color="black")) + theme_bw()
+```
+
+### atom_non_h_electron_sum 
+
+```{r correlation2, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+ggplot(all_summary, aes(x=local_res_atom_non_h_electron_sum, y=dict_atom_non_h_electron_sum )) + geom_point() + ggtitle("local_res_atom_non_h_electron_sum vs dict_atom_non_h_electron_sum ") + geom_smooth(method=lm, se=FALSE) + scale_x_continuous(name = "local_res_atom_non_h_electron_sum") + scale_y_continuous(name = "dict_atom_non_h_electron_sum ") + theme(plot.title = element_text(hjust = 0.5), panel.background = element_blank(), axis.line = element_line(color="black"), axis.line.x = element_line(color="black")) + theme_bw()
+```
+
+### atom_C_count 
+
+```{r correlation3, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+ggplot(all_summary, aes(x=local_res_atom_C_count, y=dict_atom_C_count )) + geom_point() + ggtitle("local_res_atom_C_count vs dict_atom_C_count ") + geom_smooth(method=lm, se=FALSE) + scale_x_continuous(name = "local_res_atom_C_count") + scale_y_continuous(name = "dict_atom_C_count ") + theme(plot.title = element_text(hjust = 0.5), panel.background = element_blank(), axis.line = element_line(color="black"), axis.line.x = element_line(color="black")) + theme_bw()
+```
+
+### atom_N_count 
+
+```{r correlation4, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+ggplot(all_summary, aes(x=local_res_atom_N_count, y=dict_atom_N_count )) + geom_point() + ggtitle("local_res_atom_N_count vs dict_atom_N_count ") + geom_smooth(method=lm, se=FALSE) + scale_x_continuous(name = "local_res_atom_N_count") + scale_y_continuous(name = "dict_atom_N_count ") + theme(plot.title = element_text(hjust = 0.5), panel.background = element_blank(), axis.line = element_line(color="black"), axis.line.x = element_line(color="black")) + theme_bw()
+```
+
+### atom_O_count
+
+```{r correlation5, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+ggplot(all_summary, aes(x=local_res_atom_O_count, y=dict_atom_O_count)) + geom_point() + ggtitle("local_res_atom_O_count vs dict_atom_O_count") + geom_smooth(method=lm, se=FALSE) + scale_x_continuous(name = "local_res_atom_O_count") + scale_y_continuous(name = "dict_atom_O_count") + theme(plot.title = element_text(hjust = 0.5), panel.background = element_blank(), axis.line = element_line(color="black"), axis.line.x = element_line(color="black")) + theme_bw()
+```
+
+### atom_S_count 
+
+```{r correlation6, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+ggplot(all_summary, aes(x=local_res_atom_S_count, y=dict_atom_S_count)) + geom_point() + ggtitle("local_res_atom_S_count vs dict_atom_S_count") + geom_smooth(method=lm, se=FALSE) + scale_x_continuous(name = "local_res_atom_S_count") + scale_y_continuous(name = "dict_atom_S_count") + theme(plot.title = element_text(hjust = 0.5), panel.background = element_blank(), axis.line = element_line(color="black"), axis.line.x = element_line(color="black")) + theme_bw()
+```
+
+## Liczba przyk³adów
+Okreœlenie ile przyk³adów ma ka¿da z klas (res_name).
+
+```{r examples, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+kable(most_popular %>% select(res_name, count)) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE)
+```
+
+## Rozk³ad liczby atomów i elektronów {.tabset}
+Wykresy rozk³adów liczby atomów (local_res_atom_non_h_count) i elektronów (local_res_atom_non_h_electron_sum).
+
+### Rozk³ad liczby atomów
+
+```{r a_distribution, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+ggplotly(ggplot(data=all_summary, aes(all_summary$local_res_atom_non_h_count)) + geom_histogram(binwidth = 1, col = "black", fill="blue", alpha = .2) + ggtitle("Rozk³ad liczby atomów") + scale_x_continuous("Liczba atomów"))
+```
+
+### Rozk³ad liczby elektronów
+
+```{r e_distribution, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+ggplotly(ggplot(data=all_summary, aes(all_summary$local_res_atom_non_h_electron_sum)) + geom_histogram(binwidth = 1, col = "black", fill="blue", alpha = .2) + ggtitle("Rozk³ad liczby elektronów") + scale_x_continuous("Liczba elektronów"))
+```
+
+## Niezgodnoœæ liczby atomów i elektronów {.tabset}
+Tabela pokazuj¹ca 10 klas z najwiêksz¹ niezgodnoœci¹ liczby atomów (local_res_atom_non_h_count vs dict_atom_non_h_count) i tabelê pokazuj¹c¹ 10 klas z najwiêksz¹ niezgodnoœci¹ liczby elektronów (local_res_atom_non_h_electron_sum vs dict_atom_non_h_electron_sum;)
+
+### Niezgodnoœæ liczby atomów
+
+```{r atoms, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+kable(all_summary %>% filter(!is.na(res_name)) %>% group_by(res_name) %>% summarise(mean_incompatibility = mean(abs(local_res_atom_non_h_count - dict_atom_non_h_count), na.rm = TRUE)) %>% arrange(desc(mean_incompatibility)) %>% head(10)) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE)
+```
+
+### Niezgodnoœæ liczby elektronów
+
+```{r electrons, message=FALSE, cache.lazy=FALSE, cache=TRUE}
+kable(all_summary %>% filter(!is.na(res_name)) %>% group_by(res_name) %>%  summarise(mean_incompatibility = mean(abs(local_res_atom_non_h_electron_sum - dict_atom_non_h_electron_sum), na.rm = TRUE)) %>% arrange(desc(mean_incompatibility)) %>% head(10)) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE)
+```
+
+## Rozk³ad wartoœci zmiennych part_01
+Sekcja pokazuj¹ca rozk³ad wartoœci wszystkich kolumn zaczynaj¹cych siê od part_01 z zaznaczeniem (graficznym i liczbowym) œredniej wartoœci.
+
+```{r part_01, message=FALSE, warning=FALSE, cache.lazy=FALSE, cache=TRUE}
+for (name in names(all_summary %>% select(starts_with("part_01"))) %>% tail(1)) {
+print(ggplot(data=all_summary, aes(all_summary[[name]])) + geom_histogram(binwidth = 1, col = "black", fill="blue", alpha = .2) + geom_vline(aes(xintercept = mean(all_summary[[name]], na.rm = T)), color="red", linetype="dotted", size=1) + scale_x_continuous(name = name,breaks = mean(all_summary[[name]], na.rm = T)))
+}
+```
+
+## Interaktywny wykres lub animacjê.
+Interaktywne wykresy stworzono dla rozk³adów wartoœci atomów i elektronów.
+
+## Regresja {.tabset}
+Sekcja sprawdzaj¹ca czy na podstawie wartoœci innych kolumn mo¿na przewidzieæ liczbê elektronów i atomów oraz z jak¹ dok³adnoœci¹ mo¿na dokonaæ takiej predykcji; trafnoœæ regresji powinna zostaæ oszacowana na podstawie miar R^2 i RMSE;
+
+```{r red, echo=FALSE}
+#red <- c("title", "pbd_code", "res_name", "res_id", "chain_id", "local_BAa", "local_NPa", "local_Ra", "local_RGa", "local_SRGa", "local_CCSa", "local_CCPa", "local_ZOa", "local_ZDa", "local_ZD_minus_a", "local_ZD_plus_a", "local_res_atom_count", "local_res_atom_non_h_count", "local_res_atom_non_h_occupancy_sum", "local_res_atom_non_h_electron_sum", "local_res_atom_non_h_electron_occupancy_sum", "local_res_atom_C_count", "local_res_atom_N_count", "local_res_atom_O_count", "local_res_atom_S_count", "dict_atom_non_h_count", "dict_atom_non_h_electron_sum", "dict_atom_C_count", "dict_atom_N_count", "dict_atom_O_count", "dict_atom_S_count", "fo_col", "fc_col", "weight_col", "grid_space", "solvent_radius", "solvent_opening_radius", "part_step_FoFc_std_min", "part_step_FoFc_std_max", "part_step_FoFc_std_step")
+```
+
+```{r init, message=FALSE, warning=FALSE}
+gy <- c("local_volume", "local_electrons", "local_mean", "local_std", "local_min", "local_max", "local_skewness", "resolution")
+all_summary %<>% head(50000)
+```
+
+### Liczba atomów
+
+```{r prediction_atoms, message=FALSE, warning=FALSE, cache.lazy=FALSE, cache=TRUE}
+all_summary_atoms <- all_summary %>% select(starts_with("part_0"), local_res_atom_non_h_count, starts_with("FoFc_"), gy) %>% na.omit() 
+
+idx <- createDataPartition(all_summary_atoms$local_res_atom_non_h_count, p=0.7, list=FALSE)
+trainingData <- data.frame(all_summary_atoms[idx,])
+testData <- data.frame(all_summary_atoms[-idx,])
+
+ctrl <- trainControl(
+    # powtórzona ocena krzy¿owa
+    method = "repeatedcv",
+    # liczba podzia³ów
+    number = 2,
+    # liczba powtórzeñ
+    repeats = 5)
+
+train(local_res_atom_non_h_count ~ .,
+             data = trainingData,
+             method = "lm",
+             trControl = ctrl)
+```
+
+### Liczba elektronów
+
+```{r prediction_electrons, message=FALSE, warning=FALSE, cache.lazy=FALSE, cache=TRUE}
+all_summary_electrons <- all_summary %>% select(starts_with("part_0"), local_res_atom_non_h_electron_sum, starts_with("FoFc_"), gy) %>% na.omit()
+
+idx <- createDataPartition(all_summary_electrons$local_res_atom_non_h_electron_sum, p=0.7, list=FALSE)
+trainingData <- data.frame(all_summary_electrons[idx,])
+testData <- data.frame(all_summary_electrons[-idx,])
+
+ctrl <- trainControl(
+    # powtórzona ocena krzy¿owa
+    method = "repeatedcv",
+    # liczba podzia³ów
+    number = 2,
+    # liczba powtórzeñ
+    repeats = 5)
+
+train(local_res_atom_non_h_electron_sum ~ .,
+             data = trainingData,
+             method = "lm",
+             trControl = ctrl)
+```
+
+## Klasyfikacja
+Sekcja próbuj¹ca stworzyæ klasyfikator przewiduj¹cy wartoœæ atrybutu res_name (w tej sekcji nale¿y wykorzystaæ wiedzê z pozosta³ych punktów oraz wykonaæ dodatkowe czynnoœci, które mog¹ poprawiæ trafnoœæ klasyfikacji); trafnoœæ klasyfikacji powinna zostaæ oszacowana na danych inne ni¿ ucz¹ce za pomoc¹ mechanizmu (stratyfikowanej!) oceny krzy¿owej lub (stratyfikowanego!) zbioru testowego.
+
+```{r classification, cache.lazy=FALSE, cache=TRUE}
+all_summary %<>% select(starts_with("part_0"), res_name, starts_with("FoFc_"), gy) %>% na.omit()
+inTraining <- 
+    createDataPartition(
+        # atrybut do stratyfikacji
+        y = all_summary$res_name,
+        # procent w zbiorze ucz¹cym
+        p = .75,
+        # chcemy indeksy a nie listê
+        list = FALSE)
+
+training <- all_summary[ inTraining,]
+testing  <- all_summary[-inTraining,]
+
+ctrl <- trainControl(
+    # powtórzona ocena krzy¿owa
+    method = "repeatedcv",
+    # liczba podzia³ów
+    number = 2,
+    # liczba powtórzeñ
+    repeats = 5)
+
+fit <- train(res_name ~ .,
+             data = training,
+             method = "rf",
+             trControl = ctrl,
+             ntree = 10)
+
+fit
+
+rf_res_names <- predict(fit, newdata = testing)
+confusionMatrix(table(data = rf_res_names, testing$res_name))
+```
